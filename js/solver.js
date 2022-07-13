@@ -55,7 +55,7 @@ export function dfsSolver(initial, goal) {
 }
 
 export function aStarSolver(initial, goal) {
-    let heap = new MinHeap(0); 
+    let heap = new MinHeap(); 
     let visited = [];
     let prev = [];
     let currentCell, current;
@@ -79,7 +79,7 @@ export function aStarSolver(initial, goal) {
     heap.insert({
         indices: [initial[0], initial[1]],
         distance: 0,
-        manhattan: Math.abs(initial[0] - initial[0]) + Math.abs(initial[1] - goal[1]) + 0
+        priority: Math.abs(initial[0] - initial[0]) + Math.abs(initial[1] - goal[1]) + 0
     });
     
     while(heap.getSize() != 0 && !stop) {
@@ -102,7 +102,7 @@ export function aStarSolver(initial, goal) {
                 heap.insert({
                     indices: [ni, nj],
                     distance: current.distance + 1,
-                    manhattan: Math.abs(current[0] - goal[0]) + Math.abs(current[1] - goal[1]) + current.distance + 1
+                    priority: Math.abs(current[0] - goal[0]) + Math.abs(current[1] - goal[1]) + current.distance + 1
                 });
                 prev[ni][nj].push(current[0]);
                 prev[ni][nj].push(current[1]); 
@@ -113,7 +113,7 @@ export function aStarSolver(initial, goal) {
                 heap.insert({
                     indices: [ni, nj],
                     distance: current.distance + 1,
-                    manhattan: Math.abs(current[0] - goal[0]) + Math.abs(current[1] - goal[1]) + current.distance + 1
+                    priority: Math.abs(current[0] - goal[0]) + Math.abs(current[1] - goal[1]) + current.distance + 1
                 });
                 prev[ni][nj].push(current[0]);
                 prev[ni][nj].push(current[1]); 

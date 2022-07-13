@@ -33,9 +33,8 @@ export class Queue {
 
 export class MinHeap {
 
-    constructor (type) {
-        this.heap = [null] 
-        this.choice = type 
+    constructor () {
+        this.heap = [null]  
         this.size = 0;
     }
 
@@ -46,21 +45,7 @@ export class MinHeap {
     getMin () {
         return this.heap[1]
     }
-
-    compare(node1, node2) {
-        if(this.choice == 0) {return this.compMan(node1, node2);}
-        
-        return this.compHam(node1, node2);
-    }
-
-    compMan(node1, node2) {
-        return node1.manhattan > node2.manhattan;
-    }
     
-    compHam(node1, node2) {
-        return node1.hamming > node2.hamming;
-    }
-
     insert (node) {
 
         this.heap.push(node)
@@ -69,7 +54,7 @@ export class MinHeap {
         if (this.heap.length > 1) {
             let current = this.heap.length - 1
 
-            while (current > 1 && this.compare(this.heap[Math.floor(current/2)], this.heap[current])) {
+            while (current > 1 && compare(this.heap[Math.floor(current/2)], this.heap[current])) {
 
                 [this.heap[Math.floor(current/2)], this.heap[current]] = [this.heap[current], this.heap[Math.floor(current/2)]]
                 current = Math.floor(current/2)
@@ -81,48 +66,52 @@ export class MinHeap {
         
         if(this.size >= 1) {this.size--;}
         
-        let smallest = this.heap[1]
+        let smallest = this.heap[1];
 
         if (this.heap.length > 2) {
-            this.heap[1] = this.heap[this.heap.length-1]
-            this.heap.splice(this.heap.length - 1)
+            this.heap[1] = this.heap[this.heap.length-1];
+            this.heap.splice(this.heap.length - 1);
 
             if (this.heap.length === 3) {
-                if (this.compare(this.heap[1], this.heap[2])) {
-                    [this.heap[1], this.heap[2]] = [this.heap[2], this.heap[1]]
+                if (compare(this.heap[1], this.heap[2])) {
+                    [this.heap[1], this.heap[2]] = [this.heap[2], this.heap[1]];
                 }
-                return smallest
+                return smallest;
             }
 
-            let current = 1
-            let leftChildIndex = current * 2
-            let rightChildIndex = current * 2 + 1
+            let current = 1;
+            let leftChildIndex = current * 2;
+            let rightChildIndex = current * 2 + 1;
 
             while (this.heap[leftChildIndex] &&
                     this.heap[rightChildIndex] &&
-                    (this.compare(this.heap[current], this.heap[leftChildIndex]) ||
-                        this.compare(this.heap[current], this.heap[rightChildIndex]))) {
-                if (this.compare(this.heap[rightChildIndex], this.heap[leftChildIndex])) {
-                    [this.heap[current], this.heap[leftChildIndex]] = [this.heap[leftChildIndex], this.heap[current]]
-                    current = leftChildIndex
+                    (compare(this.heap[current], this.heap[leftChildIndex]) ||
+                        compare(this.heap[current], this.heap[rightChildIndex]))) {
+                if (compare(this.heap[rightChildIndex], this.heap[leftChildIndex])) {
+                    [this.heap[current], this.heap[leftChildIndex]] = [this.heap[leftChildIndex], this.heap[current]];
+                    current = leftChildIndex;
                 } else {
-                    [this.heap[current], this.heap[rightChildIndex]] = [this.heap[rightChildIndex], this.heap[current]]
-                    current = rightChildIndex
+                    [this.heap[current], this.heap[rightChildIndex]] = [this.heap[rightChildIndex], this.heap[current]];
+                    current = rightChildIndex;
                 }
 
-                leftChildIndex = current * 2
-                rightChildIndex = current * 2 + 1
+                leftChildIndex = current * 2;
+                rightChildIndex = current * 2 + 1;
             }
         }
 
         else if (this.heap.length === 2) {
-            this.heap.splice(1, 1)
+            this.heap.splice(1, 1);
         } else {
-            return null
+            return null;
         }
 
-        return smallest
+        return smallest;
     }
+}
+
+function compare(node1, node2) {
+    return (node1.priority > node2.priority);
 }
  
 export class DisjointSets {

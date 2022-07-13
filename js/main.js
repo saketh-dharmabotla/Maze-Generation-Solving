@@ -10,7 +10,11 @@ export let d = [0, -1, 0, 1, 0]; // a list used to compute neighbouring cell ind
 let dx; // cell width
 let dy; // cell height
 
-let stack = [];
+let disjointSets = new DisjointSets(); // a disjoint set data structure of cells for randomized Kruskal's algorithm
+let wallList = [null]; // a minimum heap of walls for randomized Prim's algorithm, priority of each node will be equal to 1
+let wallListSize = 0; // the size of the wall list
+let stack = []; // a stack for the dfsGenerator function
+
 let visited = []; // a list which stores whether a cell is visited or not
 
 export let horizontalWalls  = []; // a list of horizontal walls, entries are false for passages and true for walls 
@@ -41,8 +45,22 @@ function initializeMaze(s, r, c) {
     }
 
     current = [0, 0];
+    
     visited[0][0] = true;
-    stack.push(current);
+    
+    wallList.push({
+        indices: [0, 0],
+        type: 0 
+    });
+
+    wallList.push({
+        indices: [0, 0],
+        type: 1
+    });
+
+    wallListSize = 2;
+
+    stack.push(current); 
 
     canvas.width = size + 4;
     canvas.height = canvas.width;
@@ -75,13 +93,82 @@ function initializeMaze(s, r, c) {
 }
 
 // randomized Kruskal's algorithm using disjoint sets
-function kruskalGenerator(s, r, c) {
+function kruskalGenerator() {
    
 }
 
 // randomized prim's algorithm
-function primGenerator(s, r, c) {
+function primGenerator(oi = 0, oj = 0) {
+    
+    let index, t, i, j;
+    
+    context.fillStyle = "#3B3C37";
+    context.fillRect(oj*dx + 4, oi*dy + 4, dx - 4, dy - 4);
 
+    if(wallListSize != 0) {
+
+        // pick a wall at random
+        index = Math.floor(Math.random()*wallListSize) + 1;
+        
+        i =  wallList[index].indices[0]; 
+        j =  wallList[index].indices[1];
+        t = wallList[index].type;
+
+        // check the wall and make changes 
+    
+        if(t == 0 && visited[i][j] != visited[i + 1][j] && !visited[i][j]) {
+            visited[i][j] = true;
+            horizontalWalls[i][j] = false;
+            showWall(context.lineWidth + (j)*dx, context.lineWidth/2 + (i + 1)*dy, (j + 1)*dx, context.lineWidth/2 + (i + 1)*dy);    
+            addWalls(i, j);
+        }
+            
+        else if(t == 0 && visited[i][j] != visited[i + 1][j] && !visited[i + 1][j]) {
+            visited[i + 1][j] = true;
+            horizontalWalls[i][j] = false;
+            showWall(context.lineWidth + (j)*dx, context.lineWidth/2 + (i + 1)*dy, (j + 1)*dx, context.lineWidth/2 + (i + 1)*dy);
+            i = i + 1;
+            addWalls(i, j);
+        } 
+        
+        else if(t == 1 && visited[i][j] != visited[i][j + 1] && !visited[i][j]) {
+            visited[i][j] = true;
+            verticalWalls[i][j] = false;
+            showWall(context.lineWidth/2 + (j + 1)*dx, context.lineWidth + (i)*dy, context.lineWidth/2 + (j + 1)*dx, (i + 1)*dy);
+            addWalls(i, j);
+        }
+        else if(t == 1 && visited[i][j] != visited[i][j + 1] && !visited[i][j + 1]) {
+            visited[i][j + 1] = true;
+            verticalWalls[i][j] = false;
+            showWall(context.lineWidth/2 + (j + 1)*dx, context.lineWidth + (i)*dy, context.lineWidth/2 + (j + 1)*dx, (i + 1)*dy);
+            j = j + 1;
+            addWalls(i, j);
+        } 
+    
+        // remove the wall
+        wallListSize--;
+
+        if(wallList.length > 2) {
+            wallList[index] = wallList[wallList.length - 1];
+            wallList.splice(wallList.length - 1);
+        } 
+        else if(wallList.length == 2) {
+            wallList.splice(1, 1);
+        }
+        // repeat
+        setTimeout(() => {primGenerator(i, j)}, 20);
+    }
+    else {console.log("wallList is empty"); return;}
+
+}
+
+function addWalls(i, j) {    
+    if(i < rows - 1 && horizontalWalls[i][j]) {wallListSize++; wallList.push({indices: [i, j], type: 0});}
+    if(j < columns - 1 && verticalWalls[i][j]) {wallListSize++; wallList.push({indices: [i, j], type: 1});}
+    if(i > 0 && horizontalWalls[i - 1][j]) {wallListSize++; wallList.push({indices: [i - 1, j], type: 0});}
+    if(j > 0 && verticalWalls[i][j - 1]) {wallListSize++; wallList.push({indices: [i, j - 1], type: 1});}
+    context.fillStyle = "coral";
+    context.fillRect(j*dx + 4, i*dy + 4, dx - 4, dy - 4);
 }
 
 // randomized iterative depth first search
@@ -92,7 +179,7 @@ function dfsGenerator() {
     if(stack.length != 0) {
 
         context.fillStyle = "#3B3C37";
-        context.fillRect(current[1]*dx + 6, current[0]*dy + 6, dx - 8, dy - 8);
+        context.fillRect(current[1]*dx + 4, current[0]*dy + 4, dx - 4, dy - 4);
 
         current = stack[stack.length - 1]; 
         neighbours = [];
@@ -117,22 +204,21 @@ function dfsGenerator() {
             u = Math.floor((next[0] + current[0])/2);
             v = Math.floor((next[1] + current[1])/2);
 
+            if(dj == 0) {
+                horizontalWalls[u][v] = false;
+                showWall(context.lineWidth + (v)*dx, context.lineWidth/2 + (u + 1)*dy, (v + 1)*dx, context.lineWidth/2 + (u + 1)*dy);
+            }
+
             if(di == 0) {
                 verticalWalls[u][v] = false;
                 showWall(context.lineWidth/2 + (v + 1)*dx, context.lineWidth + (u)*dy, context.lineWidth/2 + (v + 1)*dx, (u + 1)*dy);
             }
 
-            if(dj == 0) {
-                horizontalWalls[u][v] = false;
-                showWall(context.lineWidth + (v)*dx, context.lineWidth/2 + (u + 1)*dy, (v + 1)*dx, context.lineWidth/2 + (u + 1)*dy);
-            }
-            
         }
         else {stack.pop();}
 
-        setTimeout(dfsGenerator, 10);
+        setTimeout(dfsGenerator, 20);
     }
-
     else return;
 
 }
@@ -162,11 +248,17 @@ export function showPath(path, i) {
 }
 
 initializeMaze(600, 20, 20);
-dfsGenerator();
-//kruskalGenerator(600, 20, 20);
-//primGenerator(600, 20, 20);
 
-//setTimeout(bfsSolver,37*1000, [0, 0], [19, 19]);
+//canvas.style.background = "#16AE58";
+//kruskalGenerator(600, 20, 20);
+
+//canvas.style.background = "#FFA630";
+//dfsGenerator();
+
+canvas.style.background = "#16AE58";
+primGenerator();
+
+//bfsSolver([0, 0], [19, 19]);
 //aStarSolver([0, 0], [19, 19]);
 //dfsSolver([0, 0], [19, 19]);
 
