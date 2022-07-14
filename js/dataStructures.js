@@ -1,3 +1,50 @@
+export class DisjointSets {
+    constructor() {
+        this.noOfSets = 0;   
+        this.arr = [];    
+    }
+
+    create(n) {
+        this.noOfSets = n;
+        for(let i = 0; i < n; i++) {
+            this.arr.push({
+                parent : i,
+                size: 1 
+            });
+        }
+    }
+
+    find(i) {
+        let current = i;
+    
+        while(this.arr[current].parent != current) {
+            current = this.arr[current].parent;
+        }
+
+        return current;
+    }
+
+    union(i, j) {
+        let temp;
+
+        i = this.find(i);
+        j = this.find(j);
+
+        if(i == j) 
+            return;
+
+        if(this.arr[i].size < this.arr[j].size) {
+            temp = i;
+            i = j;
+            j = temp;
+        }
+
+        this.arr[j].parent = i;
+        this.arr[i].size += this.arr[j].size;
+        this.noOfSets--;
+    }
+}
+
 export class Queue {
 
     constructor() {
@@ -112,10 +159,4 @@ export class MinHeap {
 
 function compare(node1, node2) {
     return (node1.priority > node2.priority);
-}
- 
-export class DisjointSets {
-    constructor() {
-
-    }
 }

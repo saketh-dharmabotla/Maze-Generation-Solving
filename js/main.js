@@ -6,24 +6,29 @@ import {dfsSolver, bfsSolver, aStarSolver} from './solver.js';
 let size; // size of the maze in pixels
 export let rows;  // no of rows in the maze
 export let columns; // no of columns in the maze
-export let d = [0, -1, 0, 1, 0]; // a list used to compute neighbouring cell indices
 let dx; // cell width
 let dy; // cell height
-
-let disjointSets = new DisjointSets(); // a disjoint set data structure of cells for randomized Kruskal's algorithm
-let wallList = [null]; // a minimum heap of walls for randomized Prim's algorithm, priority of each node will be equal to 1
-let wallListSize = 0; // the size of the wall list
-let stack = []; // a stack for the dfsGenerator function
-
-let visited = []; // a list which stores whether a cell is visited or not
 
 export let horizontalWalls  = []; // a list of horizontal walls, entries are false for passages and true for walls 
 export let verticalWalls = []; // a list of vertical walls, entries are false for passages and true for walls 
 
+let visited = []; // a list which stores whether a cell is visited or not
+
+let disjointSets = new DisjointSets(); // a disjoint set data structure of cells for randomized Kruskal's algorithm
+let walls = [null]; // a list of walls for Kruskal's algorithm
+let wallsSize = 0; // the size of the list of walls for Kruskal's algorithm
+
+let wallList = [null]; // a list of walls for randomized Prim's algorithm
+let wallListSize = 0; // the size of the wall list for Prim's algorithm
+
+let stack = []; // a stack for the dfsGenerator function
+
+export let d = [0, -1, 0, 1, 0]; // a list used to compute neighbouring cell indices
+let k, ni, nj, di, dj, u, v;
+
 let initial; // initial cell
 let current; // current cell
 let next; // next cell
-let k, ni, nj, di, dj, u, v;
 let goal; // goal cell
 
 // dom objects
@@ -48,6 +53,24 @@ function initializeMaze(s, r, c) {
     
     visited[0][0] = true;
     
+    disjointSets.create(rows*columns);
+
+    for(let i = 0; i < rows - 1; i++) 
+        for(let j = 0; j < columns; j++) 
+            walls.push({
+                indices: [i, j],
+                type: 0
+            });        
+
+    for(let i = 0; i < rows; i++) 
+        for(let j = 0; j < columns - 1; j++) 
+            walls.push({
+                indices: [i, j],
+                type: 1
+            });        
+
+    wallsSize = 2*rows*columns - rows - columns;
+
     wallList.push({
         indices: [0, 0],
         type: 0 
@@ -93,17 +116,69 @@ function initializeMaze(s, r, c) {
 }
 
 // randomized Kruskal's algorithm using disjoint sets
-function kruskalGenerator() {
+function kruskalGenerator(i = 0, j = 0, t = 0) {
    
+    let index;
+
+    // coloring the cells black
+    context.fillStyle = "#3B3C37";
+    context.fillRect(j*dx + 4, i*dy + 4, dx - 4, dy - 4);
+    if(t == 0) {context.fillRect(j*dx + 4, (i + 1)*dy + 4, dx - 4, dy - 4);}
+    else if(t == 1) {context.fillRect((j + 1)*dx + 4, i*dy + 4, dx - 4, dy - 4);}
+
+    if(disjointSets.noOfSets != 1) {
+
+        // pick a wall at random
+        index = Math.floor(Math.random()*wallsSize) + 1;
+
+        i = walls[index].indices[0];
+        j = walls[index].indices[1];
+        t = walls[index].type;
+
+        // check the wall and make changes
+        if(t == 0 && disjointSets.find(i*columns + j) != disjointSets.find((i + 1)*columns + j)) {
+            disjointSets.union(i*columns + j, (i + 1)*columns + j);
+            horizontalWalls[i][j] = false;
+            context.fillStyle = "cornflowerblue";
+            context.fillRect(j*dx + 4, i*dy + 4, dx - 4, dy - 4);
+            context.fillStyle = "coral";
+            context.fillRect(j*dx + 4, (i + 1)*dy + 4, dx - 4, dy - 4);
+            showWall(context.lineWidth + (j)*dx, context.lineWidth/2 + (i + 1)*dy, (j + 1)*dx, context.lineWidth/2 + (i + 1)*dy);
+        }
+        else if(t == 1 && disjointSets.find(i*columns + j) != disjointSets.find(i*columns + j + 1)) {
+            disjointSets.union(i*columns + j, i*columns + j + 1);
+            verticalWalls[i][j] = false;
+            context.fillStyle = "cornflowerblue";
+            context.fillRect(j*dx + 4, i*dy + 4, dx - 4, dy - 4);
+            context.fillStyle = "coral";
+            context.fillRect((j + 1)*dx + 4, i*dy + 4, dx - 4, dy - 4);
+            showWall(context.lineWidth/2 + (j + 1)*dx, context.lineWidth + (i)*dy, context.lineWidth/2 + (j + 1)*dx, (i + 1)*dy);
+        }
+        
+        //remove the wall   
+        wallsSize--;
+
+        if(walls.length > 2) {
+            walls[index] = walls[walls.length - 1];
+            walls.splice(walls.length - 1);
+        } 
+        else if(walls.length == 2) {
+            walls.splice(1, 1);
+        }
+
+        // repeat
+        setTimeout(() => {kruskalGenerator(i, j, t);}, 20)
+    }
+    else {bfsSolver([0, 0], [39, 39]); return;}
 }
 
 // randomized prim's algorithm
-function primGenerator(oi = 0, oj = 0) {
+function primGenerator(i = 0, j = 0) {
     
-    let index, t, i, j;
-    
+    let index, t;
+    console.log("Prim's");
     context.fillStyle = "#3B3C37";
-    context.fillRect(oj*dx + 4, oi*dy + 4, dx - 4, dy - 4);
+    context.fillRect(j*dx + 4, i*dy + 4, dx - 4, dy - 4);
 
     if(wallListSize != 0) {
 
@@ -155,10 +230,11 @@ function primGenerator(oi = 0, oj = 0) {
         else if(wallList.length == 2) {
             wallList.splice(1, 1);
         }
+
         // repeat
-        setTimeout(() => {primGenerator(i, j)}, 20);
+        setTimeout(() => {primGenerator(i, j);}, 10);
     }
-    else {console.log("wallList is empty"); return;}
+    else {bfsSolver([0, 0], [39, 39]); return;}
 
 }
 
@@ -185,7 +261,7 @@ function dfsGenerator() {
         neighbours = [];
 
         context.fillStyle = "cornflowerblue";
-        context.fillRect(current[1]*dx + 6, current[0]*dy + 6, dx - 8, dy - 8);
+        context.fillRect(current[1]*dx + 4, current[0]*dy + 4, dx - 4, dy - 4);
 
         for(k = 0; k < 4; k++) {
             ni = current[0] + d[k]; 
@@ -219,7 +295,7 @@ function dfsGenerator() {
 
         setTimeout(dfsGenerator, 20);
     }
-    else return;
+    else {bfsSolver([0, 0], [39, 39]); return};
 
 }
 
@@ -237,26 +313,26 @@ export function showPath(path, i) {
 
     context.fillStyle = "#16AE58";
     
-    x = path[i][1]*dx + 6;
-    y = path[i][0]*dy + 6;
+    x = path[i][1]*dx + 4;
+    y = path[i][0]*dy + 4;
     
-    context.fillRect(x, y, dx - 8, dy - 8);
+    context.fillRect(x, y, dx - 4, dy - 4);
     i++;
     if(i == path.length) return;
 
     setTimeout(showPath, 40, path, i);
 }
 
-initializeMaze(600, 20, 20);
+initializeMaze(600, 40, 40);
 
-//canvas.style.background = "#16AE58";
+//canvas.style.background ="#16AE58";
 //kruskalGenerator(600, 20, 20);
-
-//canvas.style.background = "#FFA630";
-//dfsGenerator();
 
 canvas.style.background = "#16AE58";
 primGenerator();
+
+//canvas.style.background = "#FFA630";
+//dfsGenerator();
 
 //bfsSolver([0, 0], [19, 19]);
 //aStarSolver([0, 0], [19, 19]);
