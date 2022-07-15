@@ -22,39 +22,158 @@ let wallList = [null]; // a list of walls for randomized Prim's algorithm
 let wallListSize = 0; // the size of the wall list for Prim's algorithm
 
 let stack = []; // a stack for the dfsGenerator function
-
-export let d = [0, -1, 0, 1, 0]; // a list used to compute neighbouring cell indices
-let k, ni, nj, di, dj, u, v;
-
-let initial; // initial cell
 let current; // current cell
 let next; // next cell
+
+export let d = [0, -1, 0, 1, 0]; // a list used to compute neighbouring cell indices
+let k, ni, nj, di, dj, u, v; // variables for accessing neighbours of each cell
+
+let initial; // initial cell
 let goal; // goal cell
+let readyToSolve = false; 
 
 // dom objects
 let canvas = document.querySelector(".maze"); // canvas object
 let context = canvas.getContext("2d"); // context
 
+//createNewMaze
+//genNewMaze
+//initial
+//goal
+//solveMaze
+//maze
+
+let genSize = document.querySelector(".genSizeInput");
+let genSpeed = document.querySelector(".genSpeedInput");
+let solverSpeed = document.querySelector(".solverSpeedInput");
+
+/*-----------------------------------------------------------------------------------------------------------------------------------------------*/
+
+
+// shows the generator options on loading the website
+create();
+
+// handling the input
+document.querySelector(".createButton").addEventListener('click', create);
+
+document.querySelector(".primButton").addEventListener('click', () => {
+    
+    if(genSize.value != "") {
+        document.querySelector(".genNewMaze").style.display = "none";
+        initializeMaze(600);
+        primGenerator();
+    }
+});
+
+document.querySelector(".kruskalButton").addEventListener('click', () => {
+    if(genSize.value != "") {
+        document.querySelector(".genNewMaze").style.display = "none";
+        initializeMaze(600);
+        kruskalGenerator();
+    }
+});
+
+document.querySelector(".dfsGenButton").addEventListener('click', () => {
+    if(genSize.value != "") {
+        document.querySelector(".genNewMaze").style.display = "none";
+        initializeMaze(600);
+        dfsGenerator();
+    }
+});
+
+document.querySelector(".selectInitialButton").addEventListener('click', () => {
+    context.fillStyle = "cornflowerblue";
+    context.fillRect(0 + 4, 0 + 4, dx - 4, dy - 4);
+    canvas.addEventListener('click', selectInitial);
+});
+
+document.querySelector(".setInitialButton").addEventListener('click', () => {
+    canvas.removeEventListener('click', selectInitial);
+    document.querySelector(".initial").style.display = "none";
+    document.querySelector(".goal").style.display = "flex";
+});
+
+document.querySelector(".selectGoalButton").addEventListener('click', () => {
+    context.fillStyle = "#AC94F4";
+    context.fillRect((columns - 1)*dx + 4, (rows - 1)*dy + 4, dx - 4, dy - 4);
+    canvas.addEventListener('click', selectGoal);
+});
+
+document.querySelector(".setGoalButton").addEventListener('click', () => {
+    canvas.removeEventListener('click', selectGoal);
+    readyToSolve = true;
+});
+
+document.querySelector(".solve").addEventListener('click', () => {
+    if(readyToSolve) {
+        document.querySelector(".goal").style.display = "none";
+        document.querySelector(".solveMaze").style.display = "flex";    
+    }
+});
+
+document.querySelector(".bfsButton").addEventListener('click', () => {document.querySelector(".solveMaze").style.display = "none"; bfsSolver(initial, goal);});
+document.querySelector(".aStarButton").addEventListener('click', () => {document.querySelector(".solveMaze").style.display = "none"; aStarSolver(initial, goal);});
+document.querySelector(".dfsSolveButton").addEventListener('click', () => {document.querySelector(".solveMaze").style.display = "none"; dfsSolver(initial, goal);});
+
+
+/*-----------------------------------------------------------------------------------------------------------------------------------------------*/
+
+// select the initial point
+function selectInitial(e) {
+    context.fillStyle = "#3B3C37";
+    context.fillRect(initial[1]*dx + 4, initial[0]*dy + 4, dx - 4, dy - 4);
+    let c = Math.floor((e.clientX - 115 - 4)/dx);
+    let r = Math.floor((e.clientY - 60 - 4)/dy);
+    context.fillStyle = "cornflowerblue";
+    context.fillRect(c*dx + 4, r*dy + 4, dx - 4, dy - 4);
+    initial = [r, c];
+}
+
+// select the goal point
+function selectGoal(e) {
+    context.fillStyle = "#3B3C37";
+    context.fillRect(goal[1]*dx + 4, goal[0]*dy + 4, dx - 4, dy - 4);
+    let c = Math.floor((e.clientX - 115 - 4)/dx);
+    let r = Math.floor((e.clientY - 60 - 4)/dy);
+    context.fillStyle = "#AC94F4";
+    context.fillRect(c*dx + 4, r*dy + 4, dx - 4, dy - 4);
+    goal = [r, c];
+}
+
+// creates the maze
+function create() {
+    canvas.style.display = "none";
+    initializeMaze(600, 20, 20);
+    canvas.style.display = "flex";
+    document.querySelector(".createNewMaze").style.display = "none";
+    document.querySelector(".genNewMaze").style.display = "flex";
+    document.querySelector(".initial").style.display = "none";
+    document.querySelector(".goal").style.display = "none";
+    document.querySelector(".solveMaze").style.display = "none";    
+}
+
 // function for initializing the maze info
-function initializeMaze(s, r, c) {
+function initializeMaze(s = 600, r = parseInt(genSize.value), c = parseInt(genSize.value)) {
+
     size = s;
     rows = r;
     columns = c;
     dx = size/columns;
     dy = size/rows;
 
+    visited = [];
     for(let i = 0; i < rows; i++) {
         let visitedRow = [];
         for(let j = 0; j < columns; j++) visitedRow.push(false);
         visited.push(visitedRow);
     }
 
-    current = [0, 0];
-    
     visited[0][0] = true;
     
+    disjointSets = new DisjointSets();
     disjointSets.create(rows*columns);
 
+    walls = [null];
     for(let i = 0; i < rows - 1; i++) 
         for(let j = 0; j < columns; j++) 
             walls.push({
@@ -71,6 +190,7 @@ function initializeMaze(s, r, c) {
 
     wallsSize = 2*rows*columns - rows - columns;
 
+    wallList = [null];
     wallList.push({
         indices: [0, 0],
         type: 0 
@@ -83,16 +203,23 @@ function initializeMaze(s, r, c) {
 
     wallListSize = 2;
 
+    current = [0, 0];
+    stack = [];
     stack.push(current); 
+
+    initial = [0, 0];
+    goal = [rows - 1, columns - 1];
+    readyToSolve = false;
 
     canvas.width = size + 4;
     canvas.height = canvas.width;
-    canvas.style.background = "#3B3C37";
+    canvas.style.background = "#16AE58";
     context.strokeStyle = "azure";
     context.lineWidth = 4;
 
     context.strokeRect(2, 2, size, size);
 
+    horizontalWalls = [];
     for(let i = 0; i < rows - 1; i++) {
         let horizontalWallsInRow = [];
         for(let j = 0; j < columns; j++)  {
@@ -102,6 +229,7 @@ function initializeMaze(s, r, c) {
         horizontalWalls.push(horizontalWallsInRow);
     }
 
+    verticalWalls = [];
     for(let i = 0; i < rows; i++) {
         let verticalWallsInRow = [];
         for(let j = 0; j < columns - 1; j++) {
@@ -115,11 +243,12 @@ function initializeMaze(s, r, c) {
     context.lineWidth = 4;
 }
 
+
 // randomized Kruskal's algorithm using disjoint sets
 function kruskalGenerator(i = 0, j = 0, t = 0) {
    
     let index;
-
+    
     // coloring the cells black
     context.fillStyle = "#3B3C37";
     context.fillRect(j*dx + 4, i*dy + 4, dx - 4, dy - 4);
@@ -167,16 +296,23 @@ function kruskalGenerator(i = 0, j = 0, t = 0) {
         }
 
         // repeat
-        setTimeout(() => {kruskalGenerator(i, j, t);}, 20)
+        setTimeout(() => {kruskalGenerator(i, j, t);}, 10)
     }
-    else {bfsSolver([0, 0], [39, 39]); return;}
+    else {
+        document.querySelector(".createNewMaze").style.display = "block";
+        document.querySelector(".initial").style.display = "flex";
+        document.querySelector(".goal").style.display = "none";
+        document.querySelector(".solveMaze").style.display = "none";
+        return;
+    }
 }
+
 
 // randomized prim's algorithm
 function primGenerator(i = 0, j = 0) {
     
     let index, t;
-    console.log("Prim's");
+
     context.fillStyle = "#3B3C37";
     context.fillRect(j*dx + 4, i*dy + 4, dx - 4, dy - 4);
 
@@ -234,10 +370,17 @@ function primGenerator(i = 0, j = 0) {
         // repeat
         setTimeout(() => {primGenerator(i, j);}, 10);
     }
-    else {bfsSolver([0, 0], [39, 39]); return;}
+    else {
+        document.querySelector(".createNewMaze").style.display = "block";
+        document.querySelector(".initial").style.display = "flex";
+        document.querySelector(".goal").style.display = "none";
+        document.querySelector(".solveMaze").style.display = "none";
+        return;
+    }
 
 }
 
+// adds walls to wall list
 function addWalls(i, j) {    
     if(i < rows - 1 && horizontalWalls[i][j]) {wallListSize++; wallList.push({indices: [i, j], type: 0});}
     if(j < columns - 1 && verticalWalls[i][j]) {wallListSize++; wallList.push({indices: [i, j], type: 1});}
@@ -246,6 +389,7 @@ function addWalls(i, j) {
     context.fillStyle = "coral";
     context.fillRect(j*dx + 4, i*dy + 4, dx - 4, dy - 4);
 }
+
 
 // randomized iterative depth first search
 function dfsGenerator() {
@@ -260,7 +404,7 @@ function dfsGenerator() {
         current = stack[stack.length - 1]; 
         neighbours = [];
 
-        context.fillStyle = "cornflowerblue";
+        context.fillStyle = "coral";
         context.fillRect(current[1]*dx + 4, current[0]*dy + 4, dx - 4, dy - 4);
 
         for(k = 0; k < 4; k++) {
@@ -295,9 +439,18 @@ function dfsGenerator() {
 
         setTimeout(dfsGenerator, 20);
     }
-    else {bfsSolver([0, 0], [39, 39]); return};
+    else {
+        context.fillStyle = "#3B3C37";
+        context.fillRect(0 + 4, 0 + 4, dx - 4, dy - 4);
+        document.querySelector(".createNewMaze").style.display = "block";
+        document.querySelector(".initial").style.display = "flex";
+        document.querySelector(".goal").style.display = "none";
+        document.querySelector(".solveMaze").style.display = "none"; 
+        return; 
+    }
 
 }
+
 
 // draws/erases walls
 function showWall(u, v, s, t) {
@@ -306,6 +459,7 @@ function showWall(u, v, s, t) {
     context.lineTo(s, t);
     context.stroke();
 }
+
 
 // draws the path
 export function showPath(path, i) {
@@ -322,42 +476,3 @@ export function showPath(path, i) {
 
     setTimeout(showPath, 40, path, i);
 }
-
-initializeMaze(600, 40, 40);
-
-//canvas.style.background ="#16AE58";
-//kruskalGenerator(600, 20, 20);
-
-canvas.style.background = "#16AE58";
-primGenerator();
-
-//canvas.style.background = "#FFA630";
-//dfsGenerator();
-
-//bfsSolver([0, 0], [19, 19]);
-//aStarSolver([0, 0], [19, 19]);
-//dfsSolver([0, 0], [19, 19]);
-
-/*
-// draws on the canvas
-function showCanvas() { 
-    canvas.width = size + 4;
-    canvas.height = canvas.width;
-    canvas.style.background = "#3B3C37";
-    context.strokeStyle = "azure";
-    context.lineWidth = 4;
-
-    context.strokeRect(2, 2, size, size);
-
-    for(let i = 0; i < rows - 1; i++) 
-        for(let j = 0; j < columns; j++) 
-            if(horizontalWalls[i][j]) 
-                showWall(context.lineWidth/2 + (j)*dx, context.lineWidth/2 + (i + 1)*dy, context.lineWidth/2 + (j + 1)*dx, context.lineWidth/2 + (i + 1)*dy);
-            
-    for(let i = 0; i < rows; i++) 
-        for(let j = 0; j < columns - 1; j++) 
-            if(verticalWalls[i][j]) 
-                showWall(context.lineWidth/2 + (j + 1)*dx, context.lineWidth/2 + (i)*dy, context.lineWidth/2 + (j + 1)*dx, context.lineWidth/2 + (i + 1)*dy);
-
-}
-*/
